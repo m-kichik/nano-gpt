@@ -14,16 +14,15 @@ class AttentionHead(nn.Module):
         self.dropout = nn.Dropout(dropout_prob)
 
     def forward(self, x):
-        batch, time_, channels = x.shape
+        _, time_, _ = x.shape
         key = self.key(x)
         query = self.query(x)
-        attention_filter = query @ key.transpose(-2, -1) * (key.shape[-1] ** 0.5)
+        attention_filter = query @ key.transpose(-2, -1) * key.shape[-1] ** -0.5
         attention_filter = attention_filter.masked_fill(
             self.tril[:time_, :time_] == 0, float("-inf")
         )
         attention_filter = F.softmax(attention_filter, dim=-1)
         attention_filter = self.dropout(attention_filter)
-
         value = self.value(x)
         return attention_filter @ value
 
@@ -43,9 +42,9 @@ class MultiHeadAttention(nn.Module):
         self.dropout = nn.Dropout(dropout_prob)
 
     def forward(self, x):
-        out = torch.cat([head(x) for head in self.heads], dim=-1)
-        out = self.dropout(self.projection(x))
-        return out
+        result = torch.cat([head(x) for head in self.heads], dim=-1)
+        result = self.dropout(self.projection(result))
+        return result
 
 
 class FeedForward(nn.Module):
@@ -75,9 +74,7 @@ class AttentionBlock(nn.Module):
 
     def forward(self, x):
         x = x + self.attention(self.norm_1(x))
-        # x = self.norm_1(x + self.attention(x))
         x = x + self.feed_forward(self.norm_2(x))
-        # x = self.norm_2(x + self.feed_forward(x))
         return x
 
 
@@ -95,21 +92,33 @@ class NanoGPT(nn.Module):
         self.device = device
         self.block_size = block_size
 
-        self.input_embedding = nn.Embedding(vocabulary_size, num_embeddings)
+        self.token_embedding = nn.Embedding(vocabulary_size, num_embeddings)
         self.position_embedding = nn.Embedding(block_size, num_embeddings)
         self.attention_blocks = nn.Sequential(
-            *(
+            *[
                 AttentionBlock(num_heads, num_embeddings, block_size)
                 for _ in range(num_blocks)
-            )
+            ]
         )
         self.norm = nn.LayerNorm(num_embeddings)
         self.linear = nn.Linear(num_embeddings, vocabulary_size)
 
+        self.apply(self._init_weights)
+        self.to(device)
+
+    def _init_weights(self, module):
+        if isinstance(module, nn.Linear):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+            if module.bias is not None:
+                torch.nn.init.zeros_(module.bias)
+        elif isinstance(module, nn.Embedding):
+            torch.nn.init.normal_(module.weight, mean=0.0, std=0.02)
+
     def forward(self, inputs, targets=None):
         B, T = inputs.shape
-        x = self.input_embedding(inputs)
-        x += self.position_embedding(torch.arange(T, device=self.device))
+        token_emb = self.token_embedding(inputs)
+        position_emb = self.position_embedding(torch.arange(T, device=self.device))
+        x = token_emb + position_emb
         x = self.norm(self.attention_blocks(x))
         logits = self.linear(x)
 

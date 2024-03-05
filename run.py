@@ -11,7 +11,7 @@ torch.manual_seed(42)
 
 
 @torch.no_grad()
-def eval(model, dataloader, eval_iters):
+def eval(model, dataloader, eval_iters, device):
     model.eval()
 
     split_losses = {}
@@ -19,6 +19,7 @@ def eval(model, dataloader, eval_iters):
         losses = torch.zeros(eval_iters)
         for k in range(eval_iters):
             X, Y = dataloader.get_batch(split)
+            X, Y = X.to(device), Y.to(device)
             _, loss = model(X, Y)
             losses[k] = loss.item()
         split_losses[split] = losses.mean()
@@ -26,25 +27,27 @@ def eval(model, dataloader, eval_iters):
     return split_losses
 
 
-def train(model, optimizer, dataloader, max_iters, eval_interval, eval_iters, log=None):
+def train(
+    model, optimizer, dataloader, max_iters, eval_interval, eval_iters, device, log=None
+):
     for i in tqdm(range(max_iters)):
+        if log is not None and i % eval_interval == 0 or i == max_iters - 1:
+            losses = eval(model, dataloader, eval_iters, device)
+
+            if log == "terminal":
+                print(
+                    f"Iter {i}: train loss {losses['train']}, val loss: {losses['val']}"
+                )
+            if log == "wandb":
+                wandb.log({"train_loss": losses["train"], "val_loss": losses["val"]})
+
         model.train()
         X, Y = dataloader.get_batch("train")
+        X, Y = X.to(device), Y.to(device)
         _, loss = model(X, Y)
         optimizer.zero_grad(set_to_none=True)
         loss.backward()
         optimizer.step()
-
-        if log is not None and i % eval_interval == 0 or i == max_iters - 1:
-            losses = eval(model, dataloader, eval_iters)
-
-            if log == "terminal":
-                print(f"Iter {i}: train loss {losses['train']}, val loss: {losses['val']}")
-            if log == "wandb":
-                wandb.log({
-                    "train_loss": losses["train"],
-                    "val_loss": losses["val"]
-                })
 
 
 def main():
@@ -54,13 +57,18 @@ def main():
 
     config = parse_config("./configuration.yaml")
 
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+
     model = NanoGPT(
         tokenizer.vocab_size,
         config.MODEL.NUM_HEADS,
         config.MODEL.NUM_BLOCKS,
         config.MODEL.NUM_EMBEDDINGS,
         config.MODEL.BLOCK_SIZE,
+        device=device,
     )
+
+    print(sum(p.numel() for p in model.parameters()) / 1e6, "M parameters")
 
     optimizer = torch.optim.Adam(model.parameters(), lr=config.TRAIN.LR)
 
@@ -77,11 +85,7 @@ def main():
         "batch_size": config.TRAIN.BATCH_SIZE,
     }
 
-    wandb.init(
-        project="NanoGPT",
-        name="test",
-        config=wandb_config
-    )
+    wandb.init(project="NanoGPT", name="initial", config=wandb_config)
 
     train(
         model,
@@ -90,11 +94,13 @@ def main():
         config.TRAIN.ITERS,
         config.TRAIN.EVAL_INTERVAL,
         config.EVAL.ITERS,
-        log="wandb"
+        device,
+        log="wandb",
     )
 
-    context = torch.zeros((1, 1), dtype=torch.long)
+    context = torch.zeros((1, 1), dtype=torch.long, device=device)
     print(tokenizer.decode(model.generate(context, max_new_tokens=500)[0].tolist()))
+    torch.save(model.state_dict(), "checkpoint.pt")
 
 
 if __name__ == "__main__":
