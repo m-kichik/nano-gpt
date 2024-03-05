@@ -59,10 +59,10 @@ def replace_irregular_symbols(content: str) -> str:
         ("&amp;", ""),
         ("-|", ""),
         ("§", ""),
-        ("√", "")
+        ("√", ""),
     ]:
         content = content.replace(ir_s, s)
-    
+
     content = remove_by_pattern(content, r"\[\d+\]")
     return content
 
