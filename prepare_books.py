@@ -37,9 +37,39 @@ def remove_extra_space(content: str) -> str:
     return content
 
 
+def replace_irregular_symbols(content: str) -> str:
+    for ir_s, s in [
+        ("ó", "о"),
+        ("é", "е"),
+        ("á", "а"),
+        ("ё", "е"),
+        ("Ё", "Е"),
+        ("\xa0", ""),
+        ("//", ","),
+        ("…", "..."),
+        ("»", '"'),
+        ("«", '"'),
+        ("“", '"'),
+        ("„", '"'),
+        ("`", ""),
+        ("'", '"'),
+        ("—", "-"),
+        ("&lt;", ""),
+        ("&gt;", ""),
+        ("&amp;", ""),
+        ("-|", ""),
+        ("§", ""),
+        ("√", "")
+    ]:
+        content = content.replace(ir_s, s)
+    
+    content = remove_by_pattern(content, r"\[\d+\]")
+    return content
+
+
 def main():
     with open(
-        "Strugackiy_Strugackie-Tomirovannyy-i-hronologicheskiy-sbornik-proizvedeniy.S5ERfw.590031.fb2",
+        "data/Strugackiy_Strugackie-Tomirovannyy-i-hronologicheskiy-sbornik-proizvedeniy.S5ERfw.590031.fb2",
         "r",
     ) as file:
         content = file.read()
@@ -50,8 +80,14 @@ def main():
     content = remove_page_numbers(content)
     content = remove_tags(content)
     content = remove_extra_space(content)
+    content = replace_irregular_symbols(content)
 
-    with open("Strugackie_prepared.txt", "w") as file:
+    # print(content.split())
+    # print('\xa0')
+    l = list(set(content))
+    l.sort()
+    print(l)
+    with open("data/Strugackie_prepared.txt", "w") as file:
         file.write(content)
 
 
