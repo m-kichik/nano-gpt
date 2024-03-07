@@ -1,0 +1,17 @@
+MODEL:
+  NUM_HEADS: 4
+  NUM_BLOCKS: 4
+  BLOCK_SIZE: 256
+  NUM_EMBEDDINGS: 384
+  DEVICE: "cuda"
+TRAIN:
+  EXPERIMENT_NAME: "basic"
+  BATCH_SIZE: 64
+  LR: 3e-4
+  ITERS: 10000
+  EVAL_INTERVAL: 500
+  DATA_PATH: "/home/docker_nano/nano-gpt/data/Strugackie_prepared.txt" 
+  OUT_DIR: "/home/docker_nano/nano-gpt/training_results/basic"
+  WANDB: True
+EVAL:
+  ITERS: 100

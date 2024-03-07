@@ -1,15 +1,19 @@
+import os
 from typing import List
 
 
 class CharTokenizer:
-    def __init__(self, text: str):
-        if text is None:
-            raise ValueError("Empty text")
+    def __init__(self, text_path: str):
+        if text_path is None:
+            raise ValueError("Empty path")
+        with open(text_path, "r") as file:
+            text = file.read()
         self.vocab_size = None
         self.build(text)
 
     def build(self, text: str):
-        alphabet = set(text)
+        alphabet = list(set(text))
+        alphabet.sort()
         self.vocab_size = len(alphabet)
         self.symbol2int = {s: i for i, s in enumerate(alphabet)}
         self.int2symbol = {i: s for i, s in enumerate(alphabet)}

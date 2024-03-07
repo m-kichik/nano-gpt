@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from .config import Config
+
 
 class AttentionHead(nn.Module):
     def __init__(self, num_embeddings, head_size, block_size, dropout_prob=0.2):
@@ -81,13 +83,23 @@ class AttentionBlock(nn.Module):
 class NanoGPT(nn.Module):
     def __init__(
         self,
-        vocabulary_size,
-        num_heads,
-        num_blocks,
-        num_embeddings,
-        block_size,
+        vocabulary_size=None,
+        num_heads=None,
+        num_blocks=None,
+        num_embeddings=None,
+        block_size=None,
+        config=None,
         device=torch.device("cpu"),
     ):
+        if config is not None and isinstance(config, Config):
+            num_heads = config.MODEL.NUM_HEADS
+            num_blocks = config.MODEL.NUM_BLOCKS
+            num_embeddings = config.MODEL.NUM_EMBEDDINGS
+            block_size = config.MODEL.BLOCK_SIZE
+        else:
+            if None in [num_heads, num_blocks, num_embeddings, block_size]:
+                raise ValueError("Lack of defined parameters")
+
         super().__init__()
         self.device = device
         self.block_size = block_size

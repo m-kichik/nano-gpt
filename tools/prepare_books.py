@@ -69,7 +69,7 @@ def replace_irregular_symbols(content: str) -> str:
 
 def main():
     with open(
-        "data/Strugackiy_Strugackie-Tomirovannyy-i-hronologicheskiy-sbornik-proizvedeniy.S5ERfw.590031.fb2",
+        "../data/Strugackiy_Strugackie-Tomirovannyy-i-hronologicheskiy-sbornik-proizvedeniy.S5ERfw.590031.fb2",
         "r",
     ) as file:
         content = file.read()
@@ -82,12 +82,10 @@ def main():
     content = remove_extra_space(content)
     content = replace_irregular_symbols(content)
 
-    # print(content.split())
-    # print('\xa0')
     l = list(set(content))
     l.sort()
     print(l)
-    with open("data/Strugackie_prepared.txt", "w") as file:
+    with open("../data/Strugackie_prepared.txt", "w") as file:
         file.write(content)
 
 
