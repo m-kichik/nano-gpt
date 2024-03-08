@@ -4,7 +4,7 @@ MODEL:
   BLOCK_SIZE: 256
   NUM_EMBEDDINGS: 384
   DEVICE: "cuda"
-  CHECKPOINT: "/home/docker_nano/nano-gpt/training_results/basic/best.pt"
+  CHECKPOINT:
 TRAIN:
   EXPERIMENT_NAME: "basic"
   BATCH_SIZE: 64
